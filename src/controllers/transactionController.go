@@ -196,3 +196,122 @@ func GetTransactionsByConsumerId(c *fiber.Ctx) error {
 	}
 	return c.JSON(transactions)
 }
+
+func UpdateTransactions(c *fiber.Ctx) error {
+	type TransactionUpdateInput struct {
+		Tenor     int     `json:"tenor"`
+		OTR       float64 `json:"otr"`
+		AdminFee  float64 `json:"admin_fee"`
+		Interest  float64 `json:"interest"`
+		AssetName string  `json:"asset_name"`
+	}
+
+	transactionId := c.Params("id")
+	var input TransactionUpdateInput
+
+	if err := c.BodyParser(&input); err != nil {
+		return c.Status(http.StatusBadRequest).JSON(fiber.Map{
+			"message": "Invalid input data",
+			"error":   err.Error(),
+		})
+	}
+
+	var transaction models.Transaction
+	if err := config.DB.First(&transaction, transactionId).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return c.Status(http.StatusNotFound).JSON(fiber.Map{
+				"message": "Transaction not found",
+			})
+		}
+		return c.Status(http.StatusInternalServerError).JSON(fiber.Map{
+			"message": "Failed to retrieve transaction",
+			"error":   err.Error(),
+		})
+	}
+
+	var consumer models.Consumer
+	if err := config.DB.First(&consumer, transaction.ConsumerId).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return fiber.NewError(http.StatusNotFound, "Consumer not found")
+		}
+		return err
+	}
+
+	var limit models.Limit
+	if err := config.DB.Where("consumer_id = ?", transaction.ConsumerId).First(&limit).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return fiber.NewError(http.StatusNotFound, "Limit not found for this consumer")
+		}
+		return err
+	}
+
+	var consumerLimit float64
+	switch input.Tenor {
+	case 1:
+		consumerLimit = limit.Tenor1
+	case 2:
+		consumerLimit = limit.Tenor2
+	case 3:
+		consumerLimit = limit.Tenor3
+	case 6:
+		consumerLimit = limit.Tenor4
+	default:
+		return fiber.NewError(http.StatusBadRequest, "Invalid tenor value")
+	}
+
+	if input.OTR > consumerLimit {
+		return c.Status(http.StatusBadRequest).JSON(fiber.Map{
+			"message": "Insufficient limit for the requested OTR",
+		})
+	}
+
+	newLimit := consumerLimit - input.OTR
+
+	switch input.Tenor {
+	case 1:
+		limit.Tenor1 = newLimit
+	case 2:
+		limit.Tenor2 = newLimit
+	case 3:
+		limit.Tenor3 = newLimit
+	case 6:
+		limit.Tenor4 = newLimit
+	}
+
+	if err := config.DB.Save(&limit).Error; err != nil {
+		return c.Status(http.StatusInternalServerError).JSON(fiber.Map{
+			"message": "Failed to update limit",
+			"error":   err.Error(),
+		})
+	}
+
+	transaction.OTR = input.OTR
+	transaction.AdminFee = input.AdminFee
+	transaction.JumlahBunga = input.OTR * input.Interest / 100
+	transaction.JumlahCicilan = (input.OTR + transaction.JumlahBunga) / float64(input.Tenor)
+	transaction.NamaAsset = input.AssetName
+
+	if err := config.DB.Save(&transaction).Error; err != nil {
+		return c.Status(http.StatusInternalServerError).JSON(fiber.Map{
+			"message": "Failed to update transaction",
+			"error":   err.Error(),
+		})
+	}
+
+	return c.JSON(fiber.Map{
+		"message":     "Transaction updated successfully",
+		"transaction": transaction,
+	})
+}
+
+func DeleteTransactions(c *fiber.Ctx) error {
+	id, _ := strconv.Atoi(c.Params("id"))
+
+	var transaction models.Transaction
+
+	config.DB.Delete(&transaction, id)
+
+	return c.JSON(fiber.Map{
+		"Message": "Delete Complete",
+	})
+}
