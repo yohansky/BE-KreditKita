@@ -3,6 +3,7 @@ package main
 import (
 	"be-kreditkita/src/config"
 	"be-kreditkita/src/helpers"
+	"be-kreditkita/src/middlewares"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
@@ -14,7 +15,7 @@ func main() {
 	config.Connect()
 	helpers.Migrate()
 	app := fiber.New()
-
+	app.Use(middlewares.CSRFConfig())
 	app.Use(cors.New(cors.Config{
 		AllowCredentials: true,
 		AllowOrigins:     "http://localhost:3000",
