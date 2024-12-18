@@ -181,9 +181,9 @@ func UpdateConsumer(c *fiber.Ctx) error {
 		return err
 	}
 	var existConsumer models.Consumer
-	if err := config.DB.Where("nik = ?", niktostr).First(&existConsumer).Error; err == nil {
+	if err := config.DB.Where("nik = ? AND != ?", niktostr, id).First(&existConsumer).Error; err == nil {
 		return c.Status(fiber.StatusConflict).JSON(fiber.Map{
-			"error": "NIK sudah terdaftar",
+			"error": "NIK sudah terdaftar oleh consumer lain",
 		})
 	}
 

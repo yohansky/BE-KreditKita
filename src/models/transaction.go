@@ -1,17 +1,23 @@
 package models
 
-import "gorm.io/gorm"
+import (
+	"time"
+
+	"gorm.io/gorm"
+)
 
 type Transaction struct {
-	Id            uint     `json:"id"`
-	NomorKontrak  string   `json:"nomor_kontrak"`
-	OTR           float64  `json:"otr"`
-	AdminFee      float64  `json:"admin_fee"`
-	JumlahCicilan float64  `json:"jumlah_cicilan"`
-	JumlahBunga   float64  `json:"jumlah_bunga"`
-	NamaAsset     string   `json:"nama_asset"`
-	ConsumerId    uint     `json:"consumer_id"`
-	Consumer      Consumer `json:"consumer" gorm:"foreignKey:ConsumerId"`
+	Id            uint      `json:"id"`
+	NomorKontrak  string    `json:"nomor_kontrak"`
+	OTR           float64   `json:"otr"`
+	AdminFee      float64   `json:"admin_fee"`
+	JumlahCicilan float64   `json:"jumlah_cicilan"`
+	JumlahBunga   float64   `json:"jumlah_bunga"`
+	NamaAsset     string    `json:"nama_asset"`
+	ConsumerId    uint      `json:"consumer_id"`
+	Consumer      Consumer  `json:"consumer" gorm:"foreignKey:ConsumerId"`
+	CreatedAt     time.Time `json:"created_at"`
+	UpdatedAt     time.Time `json:"updated_at"`
 }
 
 func (transaction *Transaction) Count(db *gorm.DB) int64 {
