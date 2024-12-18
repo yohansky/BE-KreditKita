@@ -103,39 +103,28 @@ func CreateConsumer(c *fiber.Ctx) error {
 	}
 
 	principal := consumer.Salary * 0.3
-	annualRate := 12.0
-	monthlyRate := annualRate / 12 / 100
-	tenors := 3
 
-	var limits [3]float64
-	tempPrincipal := principal
-	for i := 0; i < tenors; i++ {
-		interest := tempPrincipal * monthlyRate
-		installment := (tempPrincipal / float64(tenors)) + interest
-		limits[i] = installment
-		tempPrincipal -= (principal / float64(tenors))
+	incrementPercentage := 0.10
+
+	var limits [4]float64
+	limits[0] = principal
+
+	for i := 1; i < 3; i++ {
+		limits[i] = limits[i-1] * (1 + incrementPercentage)
 	}
 
-	tempPrincipal = principal
-	tenor6 := 6
-	limitTenor6 := 0.0
-	for i := 0; i < tenor6; i++ {
-		interest := tempPrincipal * monthlyRate
-		installment := (tempPrincipal / float64(tenor6)) + interest
-		limitTenor6 += installment
-		tempPrincipal -= (principal / float64(tenor6))
-	}
+	limits[3] = limits[2] * (1 + incrementPercentage)
 
 	defaultLimit := models.Limit{
 		ConsumerId:      consumer.Id,
 		Tenor1:          limits[0],
 		Tenor2:          limits[1],
 		Tenor3:          limits[2],
-		Tenor4:          limitTenor6,
+		Tenor4:          limits[3],
 		RemainingTenor1: limits[0],
 		RemainingTenor2: limits[1],
 		RemainingTenor3: limits[2],
-		RemainingTenor4: limitTenor6,
+		RemainingTenor4: limits[3],
 	}
 
 	if err := config.DB.Create(&defaultLimit).Error; err != nil {

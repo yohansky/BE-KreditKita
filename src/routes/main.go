@@ -30,10 +30,10 @@ func Router(app *fiber.App) {
 	api.Put("/limits/consumer/:id", controllers.UpdateLimitConsumer)
 	api.Get("/limits/consumer/:id", controllers.GetLimitByConsumerId)
 
-	app.Get("/transactions", controllers.AllTransactions)
-	app.Get("/transaction/:id", controllers.GetTransactions)
-	app.Post("/transactions", controllers.CreateTransactions)
-	app.Put("/transaction/:id", controllers.UpdateTransactions)
-	app.Delete("transaction/:id", controllers.DeleteTransactions)
-	app.Get("/transactions/consumer/:id", controllers.GetTransactionsByConsumerId)
+	api.Get("/transactions", controllers.AllTransactions)
+	api.Get("/transaction/:id", controllers.GetTransactions)
+	api.Post("/transactions", controllers.CreateTransactions)
+	api.Put("/transaction/:id", controllers.UpdateTransactions)
+	api.Delete("transaction/:id", controllers.DeleteTransactions)
+	api.Get("/transactions/consumer/:id", controllers.GetTransactionsByConsumerId)
 }

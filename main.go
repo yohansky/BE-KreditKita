@@ -15,7 +15,6 @@ func main() {
 	config.Connect()
 	helpers.Migrate()
 	app := fiber.New()
-	// app.Use(middlewares.CSRFConfig())
 	app.Use(cors.New(cors.Config{
 		AllowCredentials: true,
 		AllowOrigins:     "http://localhost:3000",

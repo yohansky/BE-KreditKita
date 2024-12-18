@@ -60,15 +60,22 @@ func UpdateLimit(c *fiber.Ctx) error {
 	tenor2, _ := strconv.ParseFloat(c.FormValue("tenor_2"), 64)
 	tenor3, _ := strconv.ParseFloat(c.FormValue("tenor_3"), 64)
 	tenor4, _ := strconv.ParseFloat(c.FormValue("tenor_4"), 64)
+	Rtenor1, _ := strconv.ParseFloat(c.FormValue("remaining_tenor_1"), 64)
+	Rtenor2, _ := strconv.ParseFloat(c.FormValue("remaining_tenor_2"), 64)
+	Rtenor3, _ := strconv.ParseFloat(c.FormValue("remaining_tenor_3"), 64)
+	Rtenor4, _ := strconv.ParseFloat(c.FormValue("remaining_tenor_4"), 64)
 
 	limit.Tenor1 = tenor1
 	limit.Tenor2 = tenor2
 	limit.Tenor3 = tenor3
 	limit.Tenor4 = tenor4
+	limit.RemainingTenor1 = Rtenor1
+	limit.RemainingTenor2 = Rtenor2
+	limit.RemainingTenor3 = Rtenor3
+	limit.RemainingTenor4 = Rtenor4
 
-	// Mengambil consumerId dari form
 	consumerIdStr := c.FormValue("consumer_id")
-	consumerId, err := strconv.ParseUint(consumerIdStr, 10, 32) // Menggunakan ParseUint untuk uint
+	consumerId, err := strconv.ParseUint(consumerIdStr, 10, 32)
 	if err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"error": "Invalid consumer ID",
@@ -88,7 +95,6 @@ func UpdateLimit(c *fiber.Ctx) error {
 }
 
 type LimitUpdateRequest struct {
-	// ConsumerID uint    `json:"consumer_id"`
 	Tenor   int     `json:"tenor"`
 	Cicilan float64 `json:"cicilan"`
 }
@@ -138,7 +144,6 @@ func UpdateLimitConsumer(c *fiber.Ctx) error {
 
 	newRemaining = remaining + input.Amount
 
-	// update remaining tenor yang sesuai
 	switch input.Tenor {
 	case 1:
 		limit.RemainingTenor1 = newRemaining
