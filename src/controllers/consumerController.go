@@ -19,7 +19,7 @@ func AllConsumers(c *fiber.Ctx) error {
 	result := config.DB.Find(&consumers)
 
 	if result.Error != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+		return c.Status(500).JSON(fiber.Map{
 			"error": "Failed to fetch consumers",
 		})
 	}
@@ -33,33 +33,33 @@ func CreateConsumer(c *fiber.Ctx) error {
 
 	fotoKTP, err := c.FormFile("foto_ktp")
 	if err != nil {
-		return c.Status(fiber.StatusBadRequest).SendString("Failed to upload file: " + err.Error())
+		return c.Status(400).SendString("Failed to upload file: " + err.Error())
 	}
 	_, err = helpers.ValidateAndReadFile(fotoKTP, maxSize, validTypes)
 	if err != nil {
-		return c.Status(fiber.StatusBadRequest).SendString(err.Error())
+		return c.Status(400).SendString(err.Error())
 	}
 	ktpURL, err := services.UploadCLoudinary(c, fotoKTP, "kredit/foto_ktp")
 	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).SendString(err.Error())
+		return c.Status(500).SendString(err.Error())
 	}
 
 	fotoSelfie, err := c.FormFile("foto_selfie")
 	if err != nil {
-		return c.Status(fiber.StatusBadRequest).SendString("Failed to upload file: " + err.Error())
+		return c.Status(400).SendString("Failed to upload file: " + err.Error())
 	}
 	_, err = helpers.ValidateAndReadFile(fotoSelfie, maxSize, validTypes)
 	if err != nil {
-		return c.Status(fiber.StatusBadRequest).SendString(err.Error())
+		return c.Status(400).SendString(err.Error())
 	}
 	selfieURL, err := services.UploadCLoudinary(c, fotoSelfie, "kredit/foto_selfie")
 	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).SendString(err.Error())
+		return c.Status(500).SendString(err.Error())
 	}
 
 	form, err := c.MultipartForm()
 	if err != nil {
-		return c.Status(fiber.StatusBadRequest).SendString("Invalid form data")
+		return c.Status(400).SendString("Invalid form data")
 	}
 	values := form.Value
 
@@ -74,17 +74,17 @@ func CreateConsumer(c *fiber.Ctx) error {
 
 	nik, err := strconv.ParseUint(sanitizedValues["nik"].(string), 10, 64)
 	if err != nil {
-		return c.Status(fiber.StatusBadRequest).SendString("Invalid NIK")
+		return c.Status(400).SendString("Invalid NIK")
 	}
 	var existConsumer models.Consumer
 	if err := config.DB.Where("nik = ?", nik).First(&existConsumer).Error; err == nil {
-		return c.Status(fiber.StatusConflict).JSON(fiber.Map{
+		return c.Status(409).JSON(fiber.Map{
 			"error": "NIK sudah terdaftar",
 		})
 	}
 	salary, err := strconv.ParseFloat(sanitizedValues["salary"].(string), 64)
 	if err != nil {
-		return c.Status(fiber.StatusBadRequest).SendString("Invalid salary")
+		return c.Status(400).SendString("Invalid salary")
 	}
 
 	consumer := models.Consumer{
@@ -99,21 +99,21 @@ func CreateConsumer(c *fiber.Ctx) error {
 	}
 
 	if err := config.DB.Create(&consumer).Error; err != nil {
-		return c.Status(fiber.StatusInternalServerError).SendString("Failed to create consumer")
+		return c.Status(500).SendString("Failed to create consumer")
 	}
 
-	principal := consumer.Salary * 0.3
+	limitAwal := consumer.Salary * 0.3
 
-	incrementPercentage := 0.10
+	kenaikan := 0.10
 
 	var limits [4]float64
-	limits[0] = principal
+	limits[0] = limitAwal
 
 	for i := 1; i < 3; i++ {
-		limits[i] = limits[i-1] * (1 + incrementPercentage)
+		limits[i] = limits[i-1] * (1 + kenaikan)
 	}
 
-	limits[3] = limits[2] * (1 + incrementPercentage)
+	limits[3] = limits[2] * (1 + kenaikan)
 
 	defaultLimit := models.Limit{
 		ConsumerId:      consumer.Id,
@@ -150,7 +150,7 @@ func GetConsumer(c *fiber.Ctx) error {
 
 	result := config.DB.First(&consumer, id)
 	if result.Error != nil {
-		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
+		return c.Status(404).JSON(fiber.Map{
 			"message": "ID tidak ditemukan",
 		})
 	}
@@ -171,7 +171,7 @@ func UpdateConsumer(c *fiber.Ctx) error {
 	}
 	var existConsumer models.Consumer
 	if err := config.DB.Where("nik = ? AND != ?", niktostr, id).First(&existConsumer).Error; err == nil {
-		return c.Status(fiber.StatusConflict).JSON(fiber.Map{
+		return c.Status(409).JSON(fiber.Map{
 			"error": "NIK sudah terdaftar oleh consumer lain",
 		})
 	}
@@ -192,13 +192,13 @@ func UpdateConsumer(c *fiber.Ctx) error {
 	if err == nil {
 		fileKtp, err := fotoKTP.Open()
 		if err != nil {
-			return c.Status(fiber.StatusInternalServerError).SendString("Gagal membaca file foto KTP: " + err.Error())
+			return c.Status(500).SendString("Gagal membaca file foto KTP: " + err.Error())
 		}
 		defer fileKtp.Close()
 
 		fotoKTPURL, err := services.UploadCLoudinary(c, fotoKTP, "kredit/foto_ktp")
 		if err != nil {
-			return c.Status(fiber.StatusInternalServerError).SendString("Gagal mengunggah foto KTP: " + err.Error())
+			return c.Status(500).SendString("Gagal mengunggah foto KTP: " + err.Error())
 		}
 		consumer.PhotoKTP = fotoKTPURL.SecureURL
 	}
@@ -207,13 +207,13 @@ func UpdateConsumer(c *fiber.Ctx) error {
 	if err == nil {
 		fileSelfie, err := fotoSelfie.Open()
 		if err != nil {
-			return c.Status(fiber.StatusInternalServerError).SendString("Gagal membaca file foto Selfie: " + err.Error())
+			return c.Status(500).SendString("Gagal membaca file foto Selfie: " + err.Error())
 		}
 		defer fileSelfie.Close()
 
 		fotoSelfieURL, err := services.UploadCLoudinary(c, fotoSelfie, "kredit/foto_selfie")
 		if err != nil {
-			return c.Status(fiber.StatusInternalServerError).SendString("Gagal mengunggah foto Selfie: " + err.Error())
+			return c.Status(500).SendString("Gagal mengunggah foto Selfie: " + err.Error())
 		}
 		consumer.PhotoSelfie = fotoSelfieURL.SecureURL
 	}

@@ -3,7 +3,6 @@ package controllers
 import (
 	"be-kreditkita/src/config"
 	"be-kreditkita/src/models"
-	"net/http"
 	"strconv"
 
 	"github.com/gofiber/fiber/v2"
@@ -17,7 +16,7 @@ func AllTransactions(c *fiber.Ctx) error {
 	result := config.DB.Find(&transactions)
 
 	if result.Error != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+		return c.Status(500).JSON(fiber.Map{
 			"error": "Failed to fetch transactions",
 		})
 	}
@@ -49,7 +48,7 @@ func handleTransaction(req TransactionRequest) error {
 	var consumer models.Consumer
 	if err := config.DB.First(&consumer, req.ConsumerId).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
-			return fiber.NewError(http.StatusNotFound, "Consumer not found")
+			return fiber.NewError(404, "Consumer not found")
 		}
 		return err
 	}
@@ -57,7 +56,7 @@ func handleTransaction(req TransactionRequest) error {
 	var limit models.Limit
 	if err := config.DB.Where("consumer_id = ?", req.ConsumerId).First(&limit).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
-			return fiber.NewError(http.StatusNotFound, "Limit not found for this consumer")
+			return fiber.NewError(404, "Limit not found for this consumer")
 		}
 		return err
 	}
@@ -73,11 +72,11 @@ func handleTransaction(req TransactionRequest) error {
 	case 6:
 		consumerLimit = limit.RemainingTenor4
 	default:
-		return fiber.NewError(http.StatusBadRequest, "Invalid tenor value")
+		return fiber.NewError(400, "Invalid tenor value")
 	}
 
 	if req.OTR > consumerLimit {
-		return fiber.NewError(http.StatusBadRequest, "Insufficient limit")
+		return fiber.NewError(400, "Insufficient limit")
 	}
 
 	newLimit := consumerLimit - req.OTR
@@ -134,7 +133,7 @@ func CreateTransactions(c *fiber.Ctx) error {
 	}
 
 	if err := <-responseChan; err != nil {
-		return c.Status(http.StatusBadRequest).JSON(fiber.Map{
+		return c.Status(400).JSON(fiber.Map{
 			"message": "Transaction failed",
 			"error":   err.Error(),
 		})
@@ -154,7 +153,7 @@ func CreateTransactions(c *fiber.Ctx) error {
 	}
 
 	if err := config.DB.Create(&transaction).Error; err != nil {
-		return c.Status(http.StatusInternalServerError).JSON(fiber.Map{
+		return c.Status(500).JSON(fiber.Map{
 			"message": "Failed to create transaction",
 			"error":   err.Error(),
 		})
@@ -166,11 +165,11 @@ func CreateTransactions(c *fiber.Ctx) error {
 	})
 }
 
-func GetTransactions(c *fiber.Ctx) error {
-	id, _ := strconv.Atoi(c.Params("id"))
+func GetTransaction(c *fiber.Ctx) error {
+	id := c.Params("id")
 	var transaction models.Transaction
-	if err := config.DB.Preload("Consumer").First(&transaction, id).Error; err != nil {
-		return c.Status(http.StatusNotFound).JSON(fiber.Map{
+	if err := config.DB.First(&transaction, id).Error; err != nil {
+		return c.Status(404).JSON(fiber.Map{
 			"message": "Transaction not found",
 		})
 	}
@@ -210,7 +209,7 @@ func UpdateTransactions(c *fiber.Ctx) error {
 	var input TransactionUpdateInput
 
 	if err := c.BodyParser(&input); err != nil {
-		return c.Status(http.StatusBadRequest).JSON(fiber.Map{
+		return c.Status(400).JSON(fiber.Map{
 			"message": "Invalid input data",
 			"error":   err.Error(),
 		})
@@ -219,11 +218,11 @@ func UpdateTransactions(c *fiber.Ctx) error {
 	var transaction models.Transaction
 	if err := config.DB.First(&transaction, transactionId).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
-			return c.Status(http.StatusNotFound).JSON(fiber.Map{
+			return c.Status(404).JSON(fiber.Map{
 				"message": "Transaction not found",
 			})
 		}
-		return c.Status(http.StatusInternalServerError).JSON(fiber.Map{
+		return c.Status(500).JSON(fiber.Map{
 			"message": "Failed to retrieve transaction",
 			"error":   err.Error(),
 		})
@@ -232,7 +231,7 @@ func UpdateTransactions(c *fiber.Ctx) error {
 	var consumer models.Consumer
 	if err := config.DB.First(&consumer, transaction.ConsumerId).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
-			return fiber.NewError(http.StatusNotFound, "Consumer not found")
+			return fiber.NewError(404, "Consumer not found")
 		}
 		return err
 	}
@@ -240,7 +239,7 @@ func UpdateTransactions(c *fiber.Ctx) error {
 	var limit models.Limit
 	if err := config.DB.Where("consumer_id = ?", transaction.ConsumerId).First(&limit).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
-			return fiber.NewError(http.StatusNotFound, "Limit not found for this consumer")
+			return fiber.NewError(404, "Limit not found for this consumer")
 		}
 		return err
 	}
@@ -256,11 +255,11 @@ func UpdateTransactions(c *fiber.Ctx) error {
 	case 6:
 		consumerLimit = limit.Tenor4
 	default:
-		return fiber.NewError(http.StatusBadRequest, "Invalid tenor value")
+		return fiber.NewError(400, "Invalid tenor value")
 	}
 
 	if input.OTR > consumerLimit {
-		return c.Status(http.StatusBadRequest).JSON(fiber.Map{
+		return c.Status(400).JSON(fiber.Map{
 			"message": "Insufficient limit for the requested OTR",
 		})
 	}
@@ -279,7 +278,7 @@ func UpdateTransactions(c *fiber.Ctx) error {
 	}
 
 	if err := config.DB.Save(&limit).Error; err != nil {
-		return c.Status(http.StatusInternalServerError).JSON(fiber.Map{
+		return c.Status(500).JSON(fiber.Map{
 			"message": "Failed to update limit",
 			"error":   err.Error(),
 		})
@@ -292,7 +291,7 @@ func UpdateTransactions(c *fiber.Ctx) error {
 	transaction.NamaAsset = input.AssetName
 
 	if err := config.DB.Save(&transaction).Error; err != nil {
-		return c.Status(http.StatusInternalServerError).JSON(fiber.Map{
+		return c.Status(500).JSON(fiber.Map{
 			"message": "Failed to update transaction",
 			"error":   err.Error(),
 		})

@@ -15,7 +15,7 @@ func AllLimit(c *fiber.Ctx) error {
 	result := config.DB.Find(&limits)
 
 	if result.Error != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+		return c.Status(500).JSON(fiber.Map{
 			"error": "Failed to fetch limits",
 		})
 	}
@@ -30,7 +30,7 @@ func GetLimit(c *fiber.Ctx) error {
 
 	result := config.DB.Preload("Consumer").First(&limit, id)
 	if result.Error != nil {
-		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
+		return c.Status(404).JSON(fiber.Map{
 			"message": "Limit not found",
 		})
 	}
@@ -77,7 +77,7 @@ func UpdateLimit(c *fiber.Ctx) error {
 	consumerIdStr := c.FormValue("consumer_id")
 	consumerId, err := strconv.ParseUint(consumerIdStr, 10, 32)
 	if err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+		return c.Status(400).JSON(fiber.Map{
 			"error": "Invalid consumer ID",
 		})
 	}
@@ -86,7 +86,7 @@ func UpdateLimit(c *fiber.Ctx) error {
 	result := config.DB.Model(&limit).Updates(limit)
 
 	if result.Error != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+		return c.Status(500).JSON(fiber.Map{
 			"error": "Failed to update limit",
 		})
 	}
@@ -196,7 +196,7 @@ func DeleteLimit(c *fiber.Ctx) error {
 	result := config.DB.Delete(&limit)
 
 	if result.Error != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+		return c.Status(500).JSON(fiber.Map{
 			"error": "Failed to delete limit",
 		})
 	}
